@@ -10,7 +10,7 @@ from fpdf import FPDF
 st.set_page_config(layout="wide")
 
 # Ruta del archivo CSV
-CSV_PATH = "Taqueria_Los_Compadres_Ventas_Extendido.csv"  # Ruta proporcionada
+CSV_PATH = "Taqueria_Los_Compadres_Ventas_Extendido.csv"  # Reemplazar con la ruta local si es necesario
 
 # Cargar datos
 @st.cache_data
@@ -40,52 +40,94 @@ df_filtrado = df[
     (df['Tipo de Taco'].isin(tipo_taco))
 ]
 
-# --- Etapa 1: Alertas e Insights Automáticos ---
-st.markdown("## Alertas e Insights Automáticos")
+# Layout del dashboard
+st.title("Dashboard de Ventas - Taquería Los Compadres")
+st.markdown("### Resumen interactivo de ventas")
+st.markdown("Este dashboard presenta un análisis detallado de las ventas, horarios, y comportamiento de los clientes.")
 
-# Proyección de ventas usando regresión lineal
-st.markdown("### Proyección de Ventas")
-ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
+# Distribuir gráficos en columnas amplias
+with st.container():
+    # Primera fila: 2 gráficos principales
+    col1, col2 = st.columns([1, 1])
 
-# Crear modelo de regresión lineal
-if len(ventas_fecha) > 5:  # Asegurarse de tener suficientes datos
-    x = np.arange(len(ventas_fecha)).reshape(-1, 1)
-    y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
-    modelo = LinearRegression().fit(x, y)
-    predicciones = modelo.predict(np.arange(len(ventas_fecha) + 7).reshape(-1, 1))
+    with col1:
+        st.subheader("Tacos más vendidos")
+        tacos_populares = df_filtrado['Tipo de Taco'].value_counts().reset_index()
+        tacos_populares.columns = ['Tipo de Taco', 'Cantidad Vendida']
+        fig1 = px.bar(
+            tacos_populares,
+            x='Tipo de Taco',
+            y='Cantidad Vendida',
+            color='Cantidad Vendida',
+            title="Cantidad por tipo de taco",
+            labels={'Cantidad Vendida': 'Cantidad', 'Tipo de Taco': 'Taco'},
+            color_continuous_scale=px.colors.sequential.Plasma
+        )
+        st.plotly_chart(fig1, use_container_width=True)
 
-    # Crear dataframe de predicción
-    fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=7)
-    df_predicciones = pd.DataFrame({
-        'Fecha': list(ventas_fecha['Fecha']) + list(fechas_futuras),
-        'Ganancia Proyectada': np.concatenate([y.flatten(), predicciones.flatten()])
-    })
+    with col2:
+        st.subheader("Ventas por día de la semana")
+        ventas_por_dia = df_filtrado['Día de la Semana'].value_counts().reset_index()
+        ventas_por_dia.columns = ['Día de la Semana', 'Cantidad Vendida']
+        fig2 = px.bar(
+            ventas_por_dia,
+            x='Día de la Semana',
+            y='Cantidad Vendida',
+            color='Cantidad Vendida',
+            title="Ventas por día de la semana",
+            labels={'Cantidad Vendida': 'Cantidad', 'Día de la Semana': 'Día'},
+            color_continuous_scale=px.colors.sequential.Viridis
+        )
+        st.plotly_chart(fig2, use_container_width=True)
 
-    # Gráfico de proyección
-    fig_prediccion = px.line(
-        df_predicciones,
-        x='Fecha',
-        y='Ganancia Proyectada',
-        title="Proyección de Ventas (Próximos 7 Días)",
-        labels={'Ganancia Proyectada': 'Ganancia ($)', 'Fecha': 'Fecha'}
-    )
-    st.plotly_chart(fig_prediccion, use_container_width=True)
+with st.container():
+    # Segunda fila: Gráfico de horarios y acumulado por fecha
+    col3, col4 = st.columns([1, 1])
 
-# Alertas: Días con ventas bajas
-promedio_ganancia = ventas_fecha['Ganancia'].mean()
-dias_bajos = ventas_fecha[ventas_fecha['Ganancia'] < promedio_ganancia]
+    with col3:
+        st.subheader("Distribución de ventas por horario")
+        ventas_por_hora = df_filtrado['Hora'].value_counts().reset_index()
+        ventas_por_hora.columns = ['Hora', 'Cantidad Vendida']
+        fig3 = px.bar(
+            ventas_por_hora,
+            x='Hora',
+            y='Cantidad Vendida',
+            color='Cantidad Vendida',
+            title="Distribución de ventas por horario",
+            labels={'Cantidad Vendida': 'Cantidad', 'Hora': 'Horario'},
+            color_continuous_scale=px.colors.sequential.Cividis
+        )
+        st.plotly_chart(fig3, use_container_width=True)
 
-st.markdown("### Alertas")
-if not dias_bajos.empty:
-    st.warning(f"Se detectaron {len(dias_bajos)} días con ventas por debajo del promedio.")
-    st.dataframe(dias_bajos)
-else:
-    st.success("No hay días con ventas bajas detectados.")
+    with col4:
+        st.subheader("Ventas acumuladas por fecha")
+        # Corrección del cálculo de ventas totales por fecha
+        ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
+        if len(ventas_fecha) > 1:  # Asegurarse de que haya suficientes datos
+            x = np.arange(len(ventas_fecha)).reshape(-1, 1)
+            y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
+            modelo = LinearRegression().fit(x, y)
+            predicciones = modelo.predict(np.arange(len(ventas_fecha) + 7).reshape(-1, 1))
 
-# --- Etapa 2: Exportación de Reportes ---
-st.markdown("## Exportación de Reportes")
+            # Crear dataframe de predicción
+            fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=7)
+            df_predicciones = pd.DataFrame({
+                'Fecha': list(ventas_fecha['Fecha']) + list(fechas_futuras),
+                'Ganancia Proyectada': np.concatenate([y.flatten(), predicciones.flatten()])
+            })
 
-# Botón para exportar a Excel
+            # Gráfico de proyección
+            fig4 = px.line(
+                df_predicciones,
+                x='Fecha',
+                y='Ganancia Proyectada',
+                title="Ganancia acumulada y proyección futura",
+                labels={'Ganancia Proyectada': 'Ganancia ($)', 'Fecha': 'Fecha'},
+                color_discrete_sequence=["#EF553B"]
+            )
+            st.plotly_chart(fig4, use_container_width=True)
+
+# Exportación de datos a Excel
 @st.cache_data
 def exportar_excel(df):
     output = io.BytesIO()
@@ -94,14 +136,14 @@ def exportar_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
-boton_excel = st.download_button(
+st.download_button(
     label="Descargar Datos en Excel",
     data=exportar_excel(df_filtrado),
     file_name="reporte_taqueria.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
-# Botón para exportar a PDF
+# Exportación de reporte a PDF
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -116,16 +158,14 @@ def exportar_pdf():
     pdf = PDF()
     pdf.add_page()
     pdf.set_font('Arial', '', 12)
-
     pdf.cell(0, 10, "Resumen de Ventas Filtradas:", 0, 1)
     for index, row in df_filtrado.iterrows():
         pdf.cell(0, 10, f"{row['Fecha'].date()} - {row['Tipo de Taco']}: ${row['Ganancia']}", 0, 1)
-
     output = io.BytesIO()
     pdf.output(output)
     return output.getvalue()
 
-boton_pdf = st.download_button(
+st.download_button(
     label="Descargar Reporte en PDF",
     data=exportar_pdf(),
     file_name="reporte_taqueria.pdf",
