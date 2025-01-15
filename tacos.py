@@ -100,20 +100,24 @@ with st.container():
         st.plotly_chart(fig3, use_container_width=True)
 
     with col4:
-        st.subheader("Ventas acumuladas por fecha")
-        # Corrección del cálculo de ventas totales por fecha
+        st.subheader("Ventas acumuladas por fecha y proyección")
+        # Cálculo de ventas totales por fecha
         ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
         if len(ventas_fecha) > 1:  # Asegurarse de que haya suficientes datos
             x = np.arange(len(ventas_fecha)).reshape(-1, 1)
             y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
             modelo = LinearRegression().fit(x, y)
-            predicciones = modelo.predict(np.arange(len(ventas_fecha) + 7).reshape(-1, 1))
+            
+            # Generar predicciones para datos existentes y futuros
+            predicciones_existentes = modelo.predict(x).flatten()
+            x_futuro = np.arange(len(ventas_fecha), len(ventas_fecha) + 7).reshape(-1, 1)
+            predicciones_futuras = modelo.predict(x_futuro).flatten()
 
             # Crear dataframe de predicción
             fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=7)
             df_predicciones = pd.DataFrame({
                 'Fecha': list(ventas_fecha['Fecha']) + list(fechas_futuras),
-                'Ganancia Proyectada': np.concatenate([y.flatten(), predicciones.flatten()])
+                'Ganancia Proyectada': list(predicciones_existentes) + list(predicciones_futuras)
             })
 
             # Gráfico de proyección
