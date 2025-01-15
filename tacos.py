@@ -16,7 +16,8 @@ CSV_PATH = "Taqueria_Los_Compadres_Ventas_Extendido.csv"
 def cargar_datos(ruta):
     df = pd.read_csv(ruta)
     df['Fecha'] = pd.to_datetime(df['Fecha'], format='%d-%m-%y', errors='coerce')
-    return df.dropna(subset=['Fecha'])
+    df['Hora'] = pd.to_datetime(df['Hora'], format='%I:%M %p', errors='coerce').dt.hour  # Normalizar la hora
+    return df.dropna(subset=['Fecha', 'Hora'])
 
 df = cargar_datos(CSV_PATH)
 
@@ -56,8 +57,8 @@ df_filtrado = df[
     (df['Fecha'] >= pd.Timestamp(fecha_min)) &
     (df['Fecha'] <= pd.Timestamp(fecha_max)) &
     (df['Tipo de Taco'].isin(tipo_taco)) &
-    (df['Hora'].str[:2].astype(int) >= hora_min) &
-    (df['Hora'].str[:2].astype(int) <= hora_max)
+    (df['Hora'] >= hora_min) &
+    (df['Hora'] <= hora_max)
 ]
 
 if evento_especial != "Todos":
