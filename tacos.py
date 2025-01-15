@@ -105,11 +105,10 @@ def ventas_por_dia():
         st.caption("Los días viernes y sábado tienen la mayor afluencia de clientes, ideales para promociones.")
 
 ventas_por_dia()
-
 # Columna 3: Proyección de ventas (1 semana)
 def proyeccion_ventas():
     with col3:
-        if mostrar_proyección:
+        if mostrar_proyeccion:
             st.subheader("Proyección de ventas (1 semana)")
             ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
             if len(ventas_fecha) > 1:
