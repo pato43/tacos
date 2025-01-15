@@ -63,10 +63,10 @@ if evento_especial != "Todos":
 st.title("Dashboard de Ventas - Taquería Los Compadres")
 st.markdown("### Resumen interactivo de ventas")
 
-# Layout horizontal con 5 columnas principales
-col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+# Layout horizontal con 4 columnas principales para los gráficos superiores
+col1, col2, col3, col4 = st.columns(4)
 
-# Columna 1: Tacos más vendidos
+# Gráfico 1: Tacos más vendidos
 def tacos_mas_vendidos():
     with col1:
         st.subheader("Tacos más vendidos")
@@ -86,7 +86,7 @@ def tacos_mas_vendidos():
 
 tacos_mas_vendidos()
 
-# Columna 2: Ventas por día de la semana
+# Gráfico 2: Ventas por día de la semana
 def ventas_por_dia():
     with col2:
         st.subheader("Ventas por día de la semana")
@@ -105,83 +105,84 @@ def ventas_por_dia():
         st.caption("Los días viernes y sábado tienen la mayor afluencia de clientes, ideales para promociones.")
 
 ventas_por_dia()
-# Columna 3: Proyección de ventas (1 semana)
-def proyeccion_ventas():
-    with col3:
-        if mostrar_proyeccion:
-            st.subheader("Proyección de ventas (1 semana)")
-            ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
-            if len(ventas_fecha) > 1:
-                x = np.arange(len(ventas_fecha)).reshape(-1, 1)
-                y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
-                modelo = LinearRegression().fit(x, y)
 
-                # Predicción para la próxima semana (7 días)
-                dias_proyectados = 7
-                x_futuro = np.arange(len(ventas_fecha), len(ventas_fecha) + dias_proyectados).reshape(-1, 1)
-                predicciones = modelo.predict(x_futuro).flatten()
-
-                fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=dias_proyectados)
-                df_predicciones = pd.DataFrame({
-                    'Fecha': fechas_futuras,
-                    'Ganancia': predicciones
-                })
-
-                fig3 = px.scatter(
-                    ventas_fecha,
-                    x='Fecha',
-                    y='Ganancia',
-                    title="Proyección de ventas para la próxima semana",
-                    labels={'Ganancia': 'Ganancia ($)', 'Fecha': 'Fecha'},
-                    color_discrete_sequence=["#636EFA"]
-                )
-                fig3.add_scatter(
-                    x=df_predicciones['Fecha'],
-                    y=df_predicciones['Ganancia'],
-                    mode='lines+markers',
-                    name='Proyección',
-                    line=dict(color="#EF553B", width=2)
-                )
-                st.plotly_chart(fig3, use_container_width=True)
-                st.caption("Proyección basada en datos históricos, limitada a la próxima semana. Los puntos representan datos históricos.")
-
-proyeccion_ventas()
-
-# Columna 4: Ventas por hora
+# Gráfico 3: Ventas por horario
 def ventas_por_hora():
-    with col4:
+    with col3:
         st.subheader("Distribución de ventas por horario")
         ventas_hora = df_filtrado.groupby('Hora').agg({'Ganancia': 'sum'}).reset_index()
-        fig4 = px.bar(
+        fig3 = px.bar(
             ventas_hora,
             x='Hora',
             y='Ganancia',
             color='Ganancia',
-            title="Ventas por horario",
+            title="Distribución de ventas por horario",
             labels={'Ganancia': 'Ganancia ($)', 'Hora': 'Hora'},
             color_continuous_scale=px.colors.sequential.Sunset
         )
-        st.plotly_chart(fig4, use_container_width=True)
+        st.plotly_chart(fig3, use_container_width=True)
         st.caption("Este gráfico muestra los horarios con mayores ventas. Las horas pico son ideales para promociones.")
 
 ventas_por_hora()
 
-# Columna 5: Impacto de eventos especiales
-def impacto_eventos():
-    with col5:
-        st.subheader("Impacto de eventos especiales")
-        impacto_eventos = df_filtrado.groupby('Día Especial').agg({'Ganancia': 'sum'}).reset_index()
-        fig5 = px.pie(
-            impacto_eventos,
-            names='Día Especial',
-            values='Ganancia',
-            title="Impacto de eventos especiales en las ventas",
-            labels={'Ganancia': 'Ganancia ($)', 'Día Especial': 'Evento Especial'}
+# Gráfico 4: Ventas acumuladas por fecha
+def ventas_acumuladas():
+    with col4:
+        st.subheader("Ventas acumuladas por fecha")
+        ventas_acumuladas = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
+        fig4 = px.line(
+            ventas_acumuladas,
+            x='Fecha',
+            y='Ganancia',
+            title="Ganancia acumulada por fecha",
+            labels={'Ganancia': 'Ganancia Total ($)', 'Fecha': 'Fecha'},
+            line_shape='spline',
+            color_discrete_sequence=["#EF553B"]
+        )
+        st.plotly_chart(fig4, use_container_width=True)
+        st.caption("Este gráfico muestra la evolución de las ganancias a lo largo del tiempo.")
+
+ventas_acumuladas()
+
+# Gráfico 5: Proyección de ventas (ubicado debajo de los 4 gráficos principales)
+st.markdown("### Proyección de ventas (1 semana)")
+def proyeccion_ventas():
+    ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
+    if len(ventas_fecha) > 1:
+        x = np.arange(len(ventas_fecha)).reshape(-1, 1)
+        y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
+        modelo = LinearRegression().fit(x, y)
+
+        # Predicción para la próxima semana (7 días)
+        dias_proyectados = 7
+        x_futuro = np.arange(len(ventas_fecha), len(ventas_fecha) + dias_proyectados).reshape(-1, 1)
+        predicciones = modelo.predict(x_futuro).flatten()
+
+        fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=dias_proyectados)
+        df_predicciones = pd.DataFrame({
+            'Fecha': fechas_futuras,
+            'Ganancia': predicciones
+        })
+
+        fig5 = px.scatter(
+            ventas_fecha,
+            x='Fecha',
+            y='Ganancia',
+            title="Proyección de ventas para la próxima semana",
+            labels={'Ganancia': 'Ganancia ($)', 'Fecha': 'Fecha'},
+            color_discrete_sequence=["#636EFA"]
+        )
+        fig5.add_scatter(
+            x=df_predicciones['Fecha'],
+            y=df_predicciones['Ganancia'],
+            mode='lines+markers',
+            name='Proyección',
+            line=dict(color="#EF553B", width=2)
         )
         st.plotly_chart(fig5, use_container_width=True)
-        st.caption("Este gráfico muestra el impacto de los eventos especiales en las ganancias totales.")
+        st.caption("Proyección basada en datos históricos, limitada a la próxima semana.")
 
-impacto_eventos()
+proyeccion_ventas()
 
 # Exportación de datos a Excel
 @st.cache_data
