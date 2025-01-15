@@ -67,7 +67,7 @@ st.markdown("### Resumen interactivo de ventas")
 col1, col2, col3 = st.columns([1, 1, 1])
 
 # Columna 1: Tacos más vendidos
-with col1:
+def tacos_mas_vendidos():
     st.subheader("Tacos más vendidos")
     tacos_populares = df_filtrado['Tipo de Taco'].value_counts().reset_index()
     tacos_populares.columns = ['Tipo de Taco', 'Cantidad Vendida']
@@ -83,8 +83,10 @@ with col1:
     st.plotly_chart(fig1, use_container_width=True)
     st.caption("Este gráfico muestra los tacos más vendidos. Pastor lidera en ventas, seguido de Suadero.")
 
+tacos_mas_vendidos()
+
 # Columna 2: Ventas por día de la semana
-with col2:
+def ventas_por_dia():
     st.subheader("Ventas por día de la semana")
     ventas_por_dia = df_filtrado['Día de la Semana'].value_counts().reset_index()
     ventas_por_dia.columns = ['Día de la Semana', 'Cantidad Vendida']
@@ -100,8 +102,10 @@ with col2:
     st.plotly_chart(fig2, use_container_width=True)
     st.caption("Los días viernes y sábado tienen la mayor afluencia de clientes, ideales para promociones.")
 
+ventas_por_dia()
+
 # Columna 3: Proyección de ventas (1 semana)
-with col3:
+def proyeccion_ventas():
     if mostrar_proyeccion:
         st.subheader("Proyección de ventas (1 semana)")
         ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
@@ -138,6 +142,8 @@ with col3:
             )
             st.plotly_chart(fig3, use_container_width=True)
             st.caption("Proyección basada en datos históricos, limitada a la próxima semana. Los puntos representan datos históricos.")
+
+proyeccion_ventas()
 
 # Exportación de datos a Excel
 @st.cache_data
