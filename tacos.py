@@ -9,7 +9,7 @@ import io
 st.set_page_config(layout="wide")
 
 # Ruta del archivo CSV
-CSV_PATH = "Taqueria_Los_Compadres_Ventas_Extendido.csv"  # Reemplazar con la ruta local si es necesario
+CSV_PATH = "Taqueria_Los_Compadres_Ventas_Extendido.csv"
 
 # Cargar datos
 @st.cache_data
@@ -31,103 +31,141 @@ tipo_taco = st.sidebar.multiselect(
     options=df['Tipo de Taco'].unique(),
     default=df['Tipo de Taco'].unique()
 )
+hora_min, hora_max = st.sidebar.slider(
+    "Selecciona un rango de horas:",
+    min_value=0,
+    max_value=23,
+    value=(0, 23),
+    step=1,
+    format="%02d:00"
+)
+evento_especial = st.sidebar.selectbox(
+    "Selecciona el tipo de evento especial:",
+    options=["Todos", "Promoción 2x1", "Festividad Local", "Sin evento"]
+)
+
+mostrar_proyeccion = st.sidebar.checkbox("Mostrar proyección de ventas", value=True)
+
+tipo_grafico = st.sidebar.selectbox(
+    "Selecciona el tipo de gráfico:",
+    options=["Línea", "Barra"]
+)
 
 # Aplicar filtros
 df_filtrado = df[
     (df['Fecha'] >= pd.Timestamp(fecha_min)) &
     (df['Fecha'] <= pd.Timestamp(fecha_max)) &
-    (df['Tipo de Taco'].isin(tipo_taco))
+    (df['Tipo de Taco'].isin(tipo_taco)) &
+    (df['Hora'].str[:2].astype(int) >= hora_min) &
+    (df['Hora'].str[:2].astype(int) <= hora_max)
 ]
 
-# Layout del dashboard
+if evento_especial != "Todos":
+    df_filtrado = df_filtrado[df_filtrado['Día Especial'] == evento_especial]
+
+# Resumen estadístico
 st.title("Dashboard de Ventas - Taquería Los Compadres")
 st.markdown("### Resumen interactivo de ventas")
-st.markdown("Este dashboard presenta un análisis detallado de las ventas, horarios, y comportamiento de los clientes.")
+col_resumen1, col_resumen2, col_resumen3 = st.columns(3)
 
-# Distribuir gráficos en columnas amplias
+with col_resumen1:
+    st.metric("Ganancia Total", f"${df_filtrado['Ganancia'].sum():,.2f}")
+
+with col_resumen2:
+    dia_mayor_ganancia = df_filtrado.groupby('Día de la Semana')['Ganancia'].sum().idxmax()
+    st.metric("Día con Mayor Ganancia", dia_mayor_ganancia)
+
+with col_resumen3:
+    taco_mas_vendido = df_filtrado['Tipo de Taco'].value_counts().idxmax()
+    st.metric("Taco Más Vendido", taco_mas_vendido)
+
+# Gráficos principales
 with st.container():
-    # Primera fila: 2 gráficos principales
     col1, col2 = st.columns([1, 1])
 
     with col1:
         st.subheader("Tacos más vendidos")
         tacos_populares = df_filtrado['Tipo de Taco'].value_counts().reset_index()
         tacos_populares.columns = ['Tipo de Taco', 'Cantidad Vendida']
-        fig1 = px.bar(
-            tacos_populares,
-            x='Tipo de Taco',
-            y='Cantidad Vendida',
-            color='Cantidad Vendida',
-            title="Cantidad por tipo de taco",
-            labels={'Cantidad Vendida': 'Cantidad', 'Tipo de Taco': 'Taco'},
-            color_continuous_scale=px.colors.sequential.Plasma
-        )
+        if tipo_grafico == "Línea":
+            fig1 = px.line(
+                tacos_populares,
+                x='Tipo de Taco',
+                y='Cantidad Vendida',
+                title="Cantidad por tipo de taco",
+                labels={'Cantidad Vendida': 'Cantidad', 'Tipo de Taco': 'Taco'}
+            )
+        else:
+            fig1 = px.bar(
+                tacos_populares,
+                x='Tipo de Taco',
+                y='Cantidad Vendida',
+                color='Cantidad Vendida',
+                title="Cantidad por tipo de taco",
+                labels={'Cantidad Vendida': 'Cantidad', 'Tipo de Taco': 'Taco'},
+                color_continuous_scale=px.colors.sequential.Plasma
+            )
         st.plotly_chart(fig1, use_container_width=True)
 
     with col2:
         st.subheader("Ventas por día de la semana")
         ventas_por_dia = df_filtrado['Día de la Semana'].value_counts().reset_index()
         ventas_por_dia.columns = ['Día de la Semana', 'Cantidad Vendida']
-        fig2 = px.bar(
-            ventas_por_dia,
-            x='Día de la Semana',
-            y='Cantidad Vendida',
-            color='Cantidad Vendida',
-            title="Ventas por día de la semana",
-            labels={'Cantidad Vendida': 'Cantidad', 'Día de la Semana': 'Día'},
-            color_continuous_scale=px.colors.sequential.Viridis
-        )
+        if tipo_grafico == "Línea":
+            fig2 = px.line(
+                ventas_por_dia,
+                x='Día de la Semana',
+                y='Cantidad Vendida',
+                title="Ventas por día de la semana",
+                labels={'Cantidad Vendida': 'Cantidad', 'Día de la Semana': 'Día'}
+            )
+        else:
+            fig2 = px.bar(
+                ventas_por_dia,
+                x='Día de la Semana',
+                y='Cantidad Vendida',
+                color='Cantidad Vendida',
+                title="Ventas por día de la semana",
+                labels={'Cantidad Vendida': 'Cantidad', 'Día de la Semana': 'Día'},
+                color_continuous_scale=px.colors.sequential.Viridis
+            )
         st.plotly_chart(fig2, use_container_width=True)
 
-with st.container():
-    # Segunda fila: Gráfico de horarios y regresión lineal
-    col3, col4 = st.columns([1, 1])
+# Proyección de ventas
+if mostrar_proyeccion:
+    st.subheader("Proyección de ventas (1 semana)")
+    ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
+    if len(ventas_fecha) > 1:
+        x = np.arange(len(ventas_fecha)).reshape(-1, 1)
+        y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
+        modelo = LinearRegression().fit(x, y)
 
-    with col3:
-        st.subheader("Distribución de ventas por horario")
-        ventas_por_hora = df_filtrado['Hora'].value_counts().reset_index()
-        ventas_por_hora.columns = ['Hora', 'Cantidad Vendida']
-        fig3 = px.bar(
-            ventas_por_hora,
-            x='Hora',
-            y='Cantidad Vendida',
-            color='Cantidad Vendida',
-            title="Distribución de ventas por horario",
-            labels={'Cantidad Vendida': 'Cantidad', 'Hora': 'Horario'},
-            color_continuous_scale=px.colors.sequential.Cividis
+        dias_proyectados = 7
+        x_futuro = np.arange(len(ventas_fecha), len(ventas_fecha) + dias_proyectados).reshape(-1, 1)
+        predicciones = modelo.predict(x_futuro).flatten()
+
+        fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=dias_proyectados)
+        df_predicciones = pd.DataFrame({
+            'Fecha': fechas_futuras,
+            'Ganancia': predicciones
+        })
+
+        fig4 = px.scatter(
+            ventas_fecha,
+            x='Fecha',
+            y='Ganancia',
+            title="Proyección de ventas para la próxima semana",
+            labels={'Ganancia': 'Ganancia ($)', 'Fecha': 'Fecha'},
+            color_discrete_sequence=["#636EFA"]
         )
-        st.plotly_chart(fig3, use_container_width=True)
-
-    with col4:
-        st.subheader("Proyección de ventas (1 semana)")
-        ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
-        if len(ventas_fecha) > 1:  # Asegurarse de que haya suficientes datos
-            x = np.arange(len(ventas_fecha)).reshape(-1, 1)
-            y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
-            modelo = LinearRegression().fit(x, y)
-            
-            # Predicciones (proyección para la próxima semana)
-            dias_proyectados = 7
-            x_futuro = np.arange(len(ventas_fecha), len(ventas_fecha) + dias_proyectados).reshape(-1, 1)
-            predicciones = modelo.predict(x_futuro).flatten()
-            
-            # Fechas para los próximos 7 días
-            fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=dias_proyectados)
-            df_predicciones = pd.DataFrame({
-                'Fecha': fechas_futuras,
-                'Ganancia': predicciones
-            })
-
-            # Gráfico con proyección
-            fig4 = px.line(
-                df_predicciones,
-                x='Fecha',
-                y='Ganancia',
-                title="Proyección de ventas para la próxima semana",
-                labels={'Ganancia': 'Ganancia ($)', 'Fecha': 'Fecha'},
-                color_discrete_sequence=["#EF553B"]
-            )
-            st.plotly_chart(fig4, use_container_width=True)
+        fig4.add_scatter(
+            x=df_predicciones['Fecha'],
+            y=df_predicciones['Ganancia'],
+            mode='lines',
+            name='Proyección',
+            line=dict(color="#EF553B", width=2)
+        )
+        st.plotly_chart(fig4, use_container_width=True)
 
 # Exportación de datos a Excel
 @st.cache_data
