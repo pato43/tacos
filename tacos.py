@@ -132,7 +132,7 @@ with st.container():
             )
             st.plotly_chart(fig4, use_container_width=True)
 
-# Exportación a PDF
+# Exportación de datos a PDF
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -151,8 +151,8 @@ def exportar_pdf():
     for index, row in df_filtrado.iterrows():
         pdf.cell(0, 10, f"{row['Fecha'].date()} - {row['Tipo de Taco']}: ${row['Ganancia']}", 0, 1)
     output = io.BytesIO()
-    pdf.output(dest='S').encode('latin1')
-    return output
+    pdf.output(output, dest='S').encode('latin1')
+    return output.getvalue()
 
 st.download_button(
     label="Descargar Reporte en PDF",
@@ -161,7 +161,7 @@ st.download_button(
     mime="application/pdf"
 )
 
-# Exportación de datos a Excel
+# Exportación a Excel
 @st.cache_data
 def exportar_excel(df):
     output = io.BytesIO()
