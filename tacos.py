@@ -4,7 +4,6 @@ import plotly.express as px
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import io
-from fpdf import FPDF
 
 # Activar modo ancho completo
 st.set_page_config(layout="wide")
@@ -107,61 +106,33 @@ with st.container():
             y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
             modelo = LinearRegression().fit(x, y)
             
-            # Predicciones
-            x_futuro = np.arange(len(ventas_fecha) + 7).reshape(-1, 1)
+            # Predicciones (proyección a una semana)
+            dias_proyectados = 7
+            x_futuro = np.arange(len(ventas_fecha), len(ventas_fecha) + dias_proyectados).reshape(-1, 1)
             predicciones = modelo.predict(x_futuro).flatten()
             
             # Crear dataframe para visualización
-            fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[0], periods=len(predicciones))
+            fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=dias_proyectados)
             df_predicciones = pd.DataFrame({
-                'Fecha': fechas_futuras,
-                'Ganancia': predicciones
+                'Fecha': list(ventas_fecha['Fecha']) + list(fechas_futuras),
+                'Ganancia': list(ventas_fecha['Ganancia']) + list(predicciones)
             })
 
-            # Gráfico con dispersión
+            # Gráfico con dispersión y proyección
             fig4 = px.scatter(
                 ventas_fecha, x='Fecha', y='Ganancia', 
-                title="Regresión lineal y proyección futura",
+                title="Regresión lineal y proyección futura (1 semana)",
                 labels={'Ganancia': 'Ganancia ($)', 'Fecha': 'Fecha'}
             )
             fig4.add_scatter(
-                x=df_predicciones['Fecha'], 
-                y=df_predicciones['Ganancia'], 
+                x=df_predicciones['Fecha'][-dias_proyectados:], 
+                y=df_predicciones['Ganancia'][-dias_proyectados:], 
                 mode='lines', 
                 name='Proyección'
             )
             st.plotly_chart(fig4, use_container_width=True)
 
-# Exportación de datos a PDF
-class PDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, "Reporte de Ventas - Taquería Los Compadres", 0, 1, 'C')
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'C')
-
-def exportar_pdf():
-    pdf = PDF()
-    pdf.add_page()
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(0, 10, "Resumen de Ventas Filtradas:", 0, 1)
-    for index, row in df_filtrado.iterrows():
-        pdf.cell(0, 10, f"{row['Fecha'].date()} - {row['Tipo de Taco']}: ${row['Ganancia']}", 0, 1)
-    output = io.BytesIO()
-    pdf.output(output, dest='S').encode('latin1')
-    return output.getvalue()
-
-st.download_button(
-    label="Descargar Reporte en PDF",
-    data=exportar_pdf(),
-    file_name="reporte_taqueria.pdf",
-    mime="application/pdf"
-)
-
-# Exportación a Excel
+# Exportación de datos a Excel
 @st.cache_data
 def exportar_excel(df):
     output = io.BytesIO()
