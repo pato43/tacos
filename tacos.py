@@ -10,7 +10,7 @@ from fpdf import FPDF
 st.set_page_config(layout="wide")
 
 # Ruta del archivo CSV
-CSV_PATH = "/home/nichi/Descargas/Taqueria_Los_Compadres_Ventas_Extendido.csv"  # Ruta proporcionada
+CSV_PATH = "Taqueria_Los_Compadres_Ventas_Extendido.csv"  # Ruta proporcionada
 
 # Cargar datos
 @st.cache_data
