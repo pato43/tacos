@@ -45,11 +45,6 @@ evento_especial = st.sidebar.selectbox(
     options=["Todos", "Promoción 2x1", "Festividad Local", "Sin evento"]
 )
 
-tipo_grafico = st.sidebar.selectbox(
-    "Selecciona el tipo de gráfico:",
-    options=["Línea", "Barra"]
-)
-
 mostrar_proyeccion = st.sidebar.checkbox("Mostrar proyección de ventas", value=True)
 
 # Aplicar filtros
@@ -71,7 +66,7 @@ st.markdown("### Resumen interactivo de ventas")
 # Layout horizontal con 3 columnas principales
 col1, col2, col3 = st.columns([1, 1, 1])
 
-# Columna 1: Tacos más vendidos y distribución por horario
+# Columna 1: Tacos más vendidos
 with col1:
     st.subheader("Tacos más vendidos")
     tacos_populares = df_filtrado['Tipo de Taco'].value_counts().reset_index()
@@ -86,27 +81,14 @@ with col1:
         color_continuous_scale=px.colors.sequential.Plasma
     )
     st.plotly_chart(fig1, use_container_width=True)
-
-    st.subheader("Distribución de ventas por horario")
-    ventas_por_hora = df_filtrado['Hora'].value_counts().reset_index()
-    ventas_por_hora.columns = ['Hora', 'Cantidad Vendida']
-    fig2 = px.bar(
-        ventas_por_hora,
-        x='Hora',
-        y='Cantidad Vendida',
-        color='Cantidad Vendida',
-        title="Ventas por horario",
-        labels={'Cantidad Vendida': 'Cantidad', 'Hora': 'Hora'},
-        color_continuous_scale=px.colors.sequential.Cividis
-    )
-    st.plotly_chart(fig2, use_container_width=True)
+    st.caption("Este gráfico muestra los tacos más vendidos. Pastor lidera en ventas, seguido de Suadero.")
 
 # Columna 2: Ventas por día de la semana
 with col2:
     st.subheader("Ventas por día de la semana")
     ventas_por_dia = df_filtrado['Día de la Semana'].value_counts().reset_index()
     ventas_por_dia.columns = ['Día de la Semana', 'Cantidad Vendida']
-    fig3 = px.bar(
+    fig2 = px.bar(
         ventas_por_dia,
         x='Día de la Semana',
         y='Cantidad Vendida',
@@ -115,7 +97,8 @@ with col2:
         labels={'Cantidad Vendida': 'Cantidad', 'Día de la Semana': 'Día'},
         color_continuous_scale=px.colors.sequential.Viridis
     )
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True)
+    st.caption("Los días viernes y sábado tienen la mayor afluencia de clientes, ideales para promociones.")
 
 # Columna 3: Proyección de ventas (1 semana)
 with col3:
@@ -138,7 +121,7 @@ with col3:
                 'Ganancia': predicciones
             })
 
-            fig4 = px.scatter(
+            fig3 = px.scatter(
                 ventas_fecha,
                 x='Fecha',
                 y='Ganancia',
@@ -146,14 +129,15 @@ with col3:
                 labels={'Ganancia': 'Ganancia ($)', 'Fecha': 'Fecha'},
                 color_discrete_sequence=["#636EFA"]
             )
-            fig4.add_scatter(
+            fig3.add_scatter(
                 x=df_predicciones['Fecha'],
                 y=df_predicciones['Ganancia'],
                 mode='lines+markers',
                 name='Proyección',
                 line=dict(color="#EF553B", width=2)
             )
-            st.plotly_chart(fig4, use_container_width=True)
+            st.plotly_chart(fig3, use_container_width=True)
+            st.caption("Proyección basada en datos históricos, limitada a la próxima semana. Los puntos representan datos históricos.")
 
 # Exportación de datos a Excel
 @st.cache_data
