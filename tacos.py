@@ -63,8 +63,8 @@ if evento_especial != "Todos":
 st.title("Dashboard de Ventas - Taquería Los Compadres")
 st.markdown("### Resumen interactivo de ventas")
 
-# Layout horizontal con 3 columnas principales
-col1, col2, col3 = st.columns([1, 1, 1])
+# Layout horizontal con 4 columnas principales
+col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
 # Columna 1: Tacos más vendidos
 def tacos_mas_vendidos():
@@ -106,7 +106,7 @@ ventas_por_dia()
 
 # Columna 3: Proyección de ventas (1 semana)
 def proyeccion_ventas():
-    if mostrar_proyeccion:
+    if mostrar_proyección:
         st.subheader("Proyección de ventas (1 semana)")
         ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
         if len(ventas_fecha) > 1:
@@ -144,6 +144,24 @@ def proyeccion_ventas():
             st.caption("Proyección basada en datos históricos, limitada a la próxima semana. Los puntos representan datos históricos.")
 
 proyeccion_ventas()
+
+# Columna 4: Ventas por hora
+def ventas_por_hora():
+    st.subheader("Distribución de ventas por horario")
+    ventas_hora = df_filtrado.groupby('Hora').agg({'Ganancia': 'sum'}).reset_index()
+    fig4 = px.bar(
+        ventas_hora,
+        x='Hora',
+        y='Ganancia',
+        color='Ganancia',
+        title="Ventas por horario",
+        labels={'Ganancia': 'Ganancia ($)', 'Hora': 'Hora'},
+        color_continuous_scale=px.colors.sequential.Sunset
+    )
+    st.plotly_chart(fig4, use_container_width=True)
+    st.caption("Este gráfico muestra los horarios con mayores ventas. Las horas pico son ideales para promociones.")
+
+ventas_por_hora()
 
 # Exportación de datos a Excel
 @st.cache_data
