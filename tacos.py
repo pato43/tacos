@@ -81,7 +81,7 @@ with st.container():
         st.plotly_chart(fig2, use_container_width=True)
 
 with st.container():
-    # Segunda fila: Gráfico de horarios y acumulado por fecha
+    # Segunda fila: Gráfico de horarios y regresión lineal
     col3, col4 = st.columns([1, 1])
 
     with col3:
@@ -100,54 +100,39 @@ with st.container():
         st.plotly_chart(fig3, use_container_width=True)
 
     with col4:
-        st.subheader("Ventas acumuladas por fecha y proyección")
-        # Cálculo de ventas totales por fecha
+        st.subheader("Regresión lineal con proyección")
         ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
         if len(ventas_fecha) > 1:  # Asegurarse de que haya suficientes datos
             x = np.arange(len(ventas_fecha)).reshape(-1, 1)
             y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
             modelo = LinearRegression().fit(x, y)
             
-            # Generar predicciones para datos existentes y futuros
-            predicciones_existentes = modelo.predict(x).flatten()
-            x_futuro = np.arange(len(ventas_fecha), len(ventas_fecha) + 7).reshape(-1, 1)
-            predicciones_futuras = modelo.predict(x_futuro).flatten()
-
-            # Crear dataframe de predicción
-            fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=7)
+            # Predicciones
+            x_futuro = np.arange(len(ventas_fecha) + 7).reshape(-1, 1)
+            predicciones = modelo.predict(x_futuro).flatten()
+            
+            # Crear dataframe para visualización
+            fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[0], periods=len(predicciones))
             df_predicciones = pd.DataFrame({
-                'Fecha': list(ventas_fecha['Fecha']) + list(fechas_futuras),
-                'Ganancia Proyectada': list(predicciones_existentes) + list(predicciones_futuras)
+                'Fecha': fechas_futuras,
+                'Ganancia': predicciones
             })
 
-            # Gráfico de proyección
-            fig4 = px.line(
-                df_predicciones,
-                x='Fecha',
-                y='Ganancia Proyectada',
-                title="Ganancia acumulada y proyección futura",
-                labels={'Ganancia Proyectada': 'Ganancia ($)', 'Fecha': 'Fecha'},
-                color_discrete_sequence=["#EF553B"]
+            # Gráfico con dispersión
+            fig4 = px.scatter(
+                ventas_fecha, x='Fecha', y='Ganancia', 
+                title="Regresión lineal y proyección futura",
+                labels={'Ganancia': 'Ganancia ($)', 'Fecha': 'Fecha'}
+            )
+            fig4.add_scatter(
+                x=df_predicciones['Fecha'], 
+                y=df_predicciones['Ganancia'], 
+                mode='lines', 
+                name='Proyección'
             )
             st.plotly_chart(fig4, use_container_width=True)
 
-# Exportación de datos a Excel
-@st.cache_data
-def exportar_excel(df):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Datos Filtrados')
-    processed_data = output.getvalue()
-    return processed_data
-
-st.download_button(
-    label="Descargar Datos en Excel",
-    data=exportar_excel(df_filtrado),
-    file_name="reporte_taqueria.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
-
-# Exportación de reporte a PDF
+# Exportación a PDF
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -166,12 +151,27 @@ def exportar_pdf():
     for index, row in df_filtrado.iterrows():
         pdf.cell(0, 10, f"{row['Fecha'].date()} - {row['Tipo de Taco']}: ${row['Ganancia']}", 0, 1)
     output = io.BytesIO()
-    pdf.output(output)
-    return output.getvalue()
+    pdf.output(dest='S').encode('latin1')
+    return output
 
 st.download_button(
     label="Descargar Reporte en PDF",
     data=exportar_pdf(),
     file_name="reporte_taqueria.pdf",
     mime="application/pdf"
+)
+
+# Exportación de datos a Excel
+@st.cache_data
+def exportar_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Datos Filtrados')
+    return output.getvalue()
+
+st.download_button(
+    label="Descargar Datos en Excel",
+    data=exportar_excel(df_filtrado),
+    file_name="reporte_taqueria.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
