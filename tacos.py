@@ -99,36 +99,33 @@ with st.container():
         st.plotly_chart(fig3, use_container_width=True)
 
     with col4:
-        st.subheader("Regresión lineal con proyección")
+        st.subheader("Proyección de ventas (1 semana)")
         ventas_fecha = df_filtrado.groupby('Fecha').agg({'Ganancia': 'sum'}).reset_index()
         if len(ventas_fecha) > 1:  # Asegurarse de que haya suficientes datos
             x = np.arange(len(ventas_fecha)).reshape(-1, 1)
             y = ventas_fecha['Ganancia'].values.reshape(-1, 1)
             modelo = LinearRegression().fit(x, y)
             
-            # Predicciones (proyección a una semana)
+            # Predicciones (proyección para la próxima semana)
             dias_proyectados = 7
             x_futuro = np.arange(len(ventas_fecha), len(ventas_fecha) + dias_proyectados).reshape(-1, 1)
             predicciones = modelo.predict(x_futuro).flatten()
             
-            # Crear dataframe para visualización
+            # Fechas para los próximos 7 días
             fechas_futuras = pd.date_range(ventas_fecha['Fecha'].iloc[-1] + pd.Timedelta(days=1), periods=dias_proyectados)
             df_predicciones = pd.DataFrame({
-                'Fecha': list(ventas_fecha['Fecha']) + list(fechas_futuras),
-                'Ganancia': list(ventas_fecha['Ganancia']) + list(predicciones)
+                'Fecha': fechas_futuras,
+                'Ganancia': predicciones
             })
 
-            # Gráfico con dispersión y proyección
-            fig4 = px.scatter(
-                ventas_fecha, x='Fecha', y='Ganancia', 
-                title="Regresión lineal y proyección futura (1 semana)",
-                labels={'Ganancia': 'Ganancia ($)', 'Fecha': 'Fecha'}
-            )
-            fig4.add_scatter(
-                x=df_predicciones['Fecha'][-dias_proyectados:], 
-                y=df_predicciones['Ganancia'][-dias_proyectados:], 
-                mode='lines', 
-                name='Proyección'
+            # Gráfico con proyección
+            fig4 = px.line(
+                df_predicciones,
+                x='Fecha',
+                y='Ganancia',
+                title="Proyección de ventas para la próxima semana",
+                labels={'Ganancia': 'Ganancia ($)', 'Fecha': 'Fecha'},
+                color_discrete_sequence=["#EF553B"]
             )
             st.plotly_chart(fig4, use_container_width=True)
 
